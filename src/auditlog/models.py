@@ -6,6 +6,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
+from .middleware import get_current_user, get_current_ip, get_current_path
+
 
 class LogEntryManager(models.Manager):
     """
@@ -38,7 +40,7 @@ class LogEntryManager(models.Manager):
 
             return self.create(**kwargs)
         return None
-        
+
     def get_for_object(self, instance):
         """
         Get log entries for the specified object.
@@ -94,8 +96,10 @@ class LogEntry(models.Model):
     object_repr = models.TextField(verbose_name=_("object representation"))
     action = models.PositiveSmallIntegerField(choices=Action.choices, verbose_name=_("action"))
     changes = models.TextField(blank=True, verbose_name=_("change message"))
-    actor = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, on_delete=models.SET_NULL, related_name='+', verbose_name=_("actor"))
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True, on_delete=models.SET_NULL, related_name='+', default=get_current_user, verbose_name=_("actor"))
     timestamp = models.DateTimeField(auto_now_add=True, verbose_name=_("timestamp"))
+    ip_address = models.GenericIPAddressField(blank=True, null=True, unpack_ipv4=True, default=get_current_ip, verbose_name=_("ip address"))
+    request_path = models.CharField(max_length=255, blank=True, default=get_current_path, verbose_name=_("path"))
 
     objects = LogEntryManager()
 
@@ -147,7 +151,7 @@ class LogEntry(models.Model):
             substrings.append(substring)
 
         return separator.join(substrings)
-        
+
 
 class AuditlogHistoryField(generic.GenericRelation):
     """
